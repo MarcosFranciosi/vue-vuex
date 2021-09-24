@@ -22,7 +22,9 @@
                 v-for="tarefa in tarefasAFazer"
                 :key="tarefa.id"
                 :tarefa="tarefa"
-                @editar="selecionarTarefaParaEdicao" />
+                @editar="selecionarTarefaParaEdicao" 
+                @concluir="concluirTarefa({tarefa: $event})"
+                @deletar="confirmarRemocaoTarefa" />
         </ul>
 
         <p v-else>Nenhuma tarefa a fazer.</p>
@@ -34,14 +36,18 @@
                 v-for="tarefa in tarefasConcluidas"
                 :key="tarefa.id"
                 :tarefa="tarefa"
-                @editar="selecionarTarefaParaEdicao" />
+                @editar="selecionarTarefaParaEdicao" 
+                @concluir="concluirTarefa({tarefa: $event})"
+                @deletar="confirmarRemocaoTarefa" />
         </ul>
 
         <p v-else>Nenhuma tarefa Concluídas.</p>
 
         <TarefaSalvar
             v-if="exibirFormulario"
-            :tarefa="tarefaSelecionada" />
+            @salvar="salvarTarefa"/>
+
+        <div class="alert alert-danger" v-if="erro">{{ erro.message }}</div>
 
 
     </div>
@@ -65,11 +71,13 @@ export default {
     data() {
         return {
             exibirFormulario: false,
-            tarefaSelecionada: undefined,
         }
     },
     computed: {
-        ...mapState(['tarefas']),
+        ...mapState([
+            'erro',
+            'tarefaSelecionada',
+        ]),
         ...mapGetters([
             'tarefasAFazer',
             'tarefasConcluidas',
@@ -79,38 +87,50 @@ export default {
 
     },
     created() {
-
         register(this.$store)
-
-        setTimeout( async () => {
-
-            console.log('Usuario Atual: ', this.boasVindas)
-
-            await this.listarTarefas()
-            console.log('Actions Executadas!')
-
-            console.log('Usuario Atual: ', this.boasVindas);
-
-        }, 1000)
-        console.log('Boas Vindas: ', this.boasVindas);
+        this.listarTarefas()
 
     },
     methods: {
-        ...mapActions(['listarTarefas']),
+        ...mapActions([
+            'concluirTarefa',
+            'criarTarefa',
+            'deletarTarefa',
+            'editarTarefa',
+            'listarTarefas',
+            'selecionarTarefa',
+            'resetarTarefaSelecionada'
+        ]),
+        confirmarRemocaoTarefa(tarefa) {
+            const confirmar = window.confirm(`Deseja deletar a tarefa "${tarefa.titulo}"`)
+            if (confirmar) {
+                this.deletarTarefa({ tarefa })
+            }
+        },
         exibirFormularioCriarTarefa(event) {
             if (this.tarefaSelecionada) {
-                this.tarefaSelecionada = undefined
+                this.resetarTarefaSelecionada()
                 return
             }
             this.exibirFormulario = !this.exibirFormulario
         },
+        async salvarTarefa(event) {
+            switch(event.operacao) {
+                case 'criar':
+                    await this.criarTarefa({ tarefa: event.tarefa })
+                    break
+                case 'editar':
+                    await this.editarTarefa({ tarefa: event.tarefa })
+            }
+            this.resetar()
+        },
         selecionarTarefaParaEdicao(tarefa) {
             this.exibirFormulario = true
-            this.tarefaSelecionada = tarefa
+            this.selecionarTarefa({ tarefa })
         },
         resetar() {
             this.exibirFormulario = false
-            this.tarefaSelecionada = undefined
+            this.resetarTarefaSelecionada()
         }
     }
 }
